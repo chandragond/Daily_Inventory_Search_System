@@ -29,7 +29,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public void addItem(String brand, String category, int price) {
+        Optional<Item> existing = itemRepository.findAll().stream()
+                .filter(i -> i.getBrand().equalsIgnoreCase(brand)
+                        && i.getCategory().equalsIgnoreCase(category))
+                .findFirst();
 
+        if (existing.isEmpty()) {
+            itemRepository.save(new Item(brand, category, price, 0));
+        }
     }
 
     @Override
@@ -50,24 +57,24 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<Item> searchItems(Map<String, List<String>> filters, int[] priceRange, String orderBy, boolean asc) {
+        return List.of();
+    }
+
+    @Override
+    public List<Item> searchItems(List<String> brands, List<String> categories, Integer minPrice, Integer maxPrice, String orderBy, boolean asc) {
+        int from = (minPrice != null) ? minPrice : -1;
+        int to = (maxPrice != null) ? maxPrice : -1;
+
         return itemRepository.findAll().stream()
-                .filter(item -> {
-                    if (filters.containsKey("brand") && !filters.get("brand").contains(item.getBrand()))
-                        return false;
-                    if (filters.containsKey("category") && !filters.get("category").contains(item.getCategory()))
-                        return false;
-                    if (priceRange != null) {
-                        int from = priceRange[0], to = priceRange[1];
-                        if ((from != -1 && item.getPrice() < from) || (to != -1 && item.getPrice() > to))
-                            return false;
-                    }
-                    return true;
-                })
+                .filter(item -> (brands == null || brands.contains(item.getBrand())))
+                .filter(item -> (categories == null || categories.contains(item.getCategory())))
+                .filter(item -> (from == -1 || item.getPrice() >= from))
+                .filter(item -> (to == -1 || item.getPrice() <= to))
                 .sorted((a, b) -> {
                     int cmp = 0;
                     switch (orderBy.toLowerCase()) {
                         case "price": cmp = Integer.compare(a.getPrice(), b.getPrice()); break;
-                        case "itemqty": cmp = Integer.compare(a.getQuantity(), b.getQuantity()); break;
+                        case "quantity": cmp = Integer.compare(a.getQuantity(), b.getQuantity()); break;
                     }
                     return asc ? cmp : -cmp;
                 })
@@ -77,5 +84,10 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<Item> getAllItems() {
         return itemRepository.findAll();
+    }
+
+    @Override
+    public void updateItem(String brand, String category, Integer price, Integer quantity) {
+
     }
 }
