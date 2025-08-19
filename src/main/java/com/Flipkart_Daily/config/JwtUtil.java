@@ -6,6 +6,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -42,16 +43,12 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // ==========================
-    // Generate Access Token
-    // ==========================
-    public String generateAccessToken(String username, Map<String, Object> extraClaims) {
+    public String generateToken(String subject, Map<String, Object> extraClaims) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpirationMs);
-
         return Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(username)
+                .setSubject(subject)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .setIssuer(issuer)
@@ -60,19 +57,15 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String generateAccessToken(String username) {
-        return generateAccessToken(username, Map.of());
+    public String generateToken(String subject) {
+        return generateToken(subject, Map.of());
     }
 
-    // ==========================
-    // Generate Refresh Token
-    // ==========================
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(String subject) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + refreshExpirationMs);
-
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(subject)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .setIssuer(issuer)
@@ -81,9 +74,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    // ==========================
-    // Extract Claims
-    // ==========================
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -107,21 +97,15 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // ==========================
-    // Validation
-    // ==========================
-    public boolean isTokenValid(String token, String username) {
-        final String user = extractUsername(token);
-        return (user != null && user.equals(username) && !isTokenExpired(token));
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    // ==========================
-    // Header & Prefix Helpers
-    // ==========================
     public String getAuthHeader() {
         return header;
     }

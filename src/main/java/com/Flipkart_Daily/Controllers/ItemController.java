@@ -1,9 +1,11 @@
 package com.Flipkart_Daily.Controllers;
 
 import com.Flipkart_Daily.Entities.Item;
+import com.Flipkart_Daily.Services.AwsS3Service;
 import com.Flipkart_Daily.Services.ItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -61,5 +63,16 @@ public class ItemController {
         itemService.updateItem(brand, category, price, quantity);
         return "Item updated successfully.";
     }
+    @Autowired
+    private AwsS3Service s3Service;
 
+    @PostMapping("/upload")
+    public String uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            String fileUrl = s3Service.uploadFile(file);
+            return "File uploaded successfully: " + fileUrl;
+        } catch (Exception e) {
+            return "Upload failed: " + e.getMessage();
+        }
+    }
 }

@@ -88,6 +88,5 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public void updateItem(String brand, String category, Integer price, Integer quantity) {
-
     }
 }
