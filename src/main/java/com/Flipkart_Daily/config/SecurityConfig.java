@@ -22,11 +22,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // disable CSRF for Postman
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll() // token issue/refresh endpoints
-                        .requestMatchers("/items/all", "/items/search").permitAll()
+                        .requestMatchers("/auth/**").permitAll() // token endpoints
+                        .requestMatchers("/items/**").permitAll() // allow all /items endpoints
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -34,7 +34,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Expose AuthenticationManager for login endpoints (if you add /auth/login)
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

@@ -5,7 +5,7 @@ import com.Flipkart_Daily.Services.ItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/items")
@@ -15,31 +15,22 @@ public class ItemController {
     private ItemService itemService;
 
     @PostMapping("/add")
-    public String addItem(@RequestParam String brand, @RequestParam String category, @RequestParam int price) {
-        itemService.addItem(brand, category, price);
+    public String addItem(@RequestBody Item item) {
+        itemService.addItem(item);
         return "Item added.";
+    }
+    @PostMapping("/add-multiple")
+    public String addMultipleItems(@RequestBody List<Item> items) {
+        for (Item item : items) {
+            itemService.addItem(item);
+        }
+        return "Multiple items added.";
     }
 
     @PostMapping("/add-inventory")
-    public String addInventory(@RequestParam String brand, @RequestParam String category, @RequestParam int quantity) {
-        itemService.addInventory(brand, category, quantity);
+    public String addInventory(@RequestBody Item item) {
+        itemService.addInventory(item.getBrand(), item.getCategory(), item.getQuantity());
         return "Inventory added.";
-    }
-
-    @GetMapping("/search")
-    public List<Item> searchItems(@RequestParam(required = false) List<String> brand,
-                                  @RequestParam(required = false) List<String> category,
-                                  @RequestParam(required = false) Integer from,
-                                  @RequestParam(required = false) Integer to,
-                                  @RequestParam(defaultValue = "price") String orderBy,
-                                  @RequestParam(defaultValue = "true") boolean asc) {
-        Map<String, List<String>> filters = new HashMap<>();
-        if (brand != null) filters.put("brand", brand);
-        if (category != null) filters.put("category", category);
-
-        int[] priceRange = (from != null || to != null) ? new int[]{from != null ? from : -1, to != null ? to : -1} : null;
-
-        return itemService.searchItems(filters, priceRange, orderBy, asc);
     }
 
     @GetMapping("/all")
