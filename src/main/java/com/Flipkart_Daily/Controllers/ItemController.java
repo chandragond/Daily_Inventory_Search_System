@@ -1,11 +1,14 @@
 package com.Flipkart_Daily.Controllers;
 
 import com.Flipkart_Daily.Entities.Item;
+import com.Flipkart_Daily.Services.AwsS3Service;
 import com.Flipkart_Daily.Services.ItemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/items")
@@ -15,35 +18,61 @@ public class ItemController {
     private ItemService itemService;
 
     @PostMapping("/add")
-    public String addItem(@RequestParam String brand, @RequestParam String category, @RequestParam int price) {
-        itemService.addItem(brand, category, price);
+    public String addItem(@RequestBody Item item) {
+        itemService.addItem(item);
         return "Item added.";
     }
 
-    @PostMapping("/add-inventory")
-    public String addInventory(@RequestParam String brand, @RequestParam String category, @RequestParam int quantity) {
-        itemService.addInventory(brand, category, quantity);
-        return "Inventory added.";
+    @PostMapping("/add-multiple")
+    public String addMultipleItems(@RequestBody List<Item> items) {
+        for (Item item : items) {
+            itemService.addItem(item);
+        }
+        return "Multiple items added.";
     }
 
-    @GetMapping("/search")
-    public List<Item> searchItems(@RequestParam(required = false) List<String> brand,
-                                  @RequestParam(required = false) List<String> category,
-                                  @RequestParam(required = false) Integer from,
-                                  @RequestParam(required = false) Integer to,
-                                  @RequestParam(defaultValue = "price") String orderBy,
-                                  @RequestParam(defaultValue = "true") boolean asc) {
-        Map<String, List<String>> filters = new HashMap<>();
-        if (brand != null) filters.put("brand", brand);
-        if (category != null) filters.put("category", category);
-
-        int[] priceRange = (from != null || to != null) ? new int[]{from != null ? from : -1, to != null ? to : -1} : null;
-
-        return itemService.searchItems(filters, priceRange, orderBy, asc);
+    @PostMapping("/add-inventory")
+    public String addInventory(@RequestBody Item item) {
+        itemService.addInventory(item.getBrand(), item.getCategory(), item.getQuantity());
+        return "Inventory added.";
     }
 
     @GetMapping("/all")
     public List<Item> getAllItems() {
         return itemService.getAllItems();
+    }
+
+    @GetMapping("/search")
+    public List<Item> searchItems(
+            @RequestParam(required = false) List<String> brand,
+            @RequestParam(required = false) List<String> category,
+            @RequestParam(required = false) Integer minPrice,
+            @RequestParam(required = false) Integer maxPrice,
+            @RequestParam(defaultValue = "price") String orderBy,
+            @RequestParam(defaultValue = "true") boolean asc
+    ) {
+        return itemService.searchItems(brand, category, minPrice, maxPrice, orderBy, asc);
+    }
+    @PutMapping("/update")
+    public String updateItem(@RequestBody Map<String, Object> request) {
+        String brand = (String) request.get("brand");
+        String category = (String) request.get("category");
+        Integer price = (Integer) request.get("price");
+        Integer quantity = (Integer) request.get("quantity");
+
+        itemService.updateItem(brand, category, price, quantity);
+        return "Item updated successfully.";
+    }
+    @Autowired
+    private AwsS3Service s3Service;
+
+    @PostMapping("/upload")
+    public String uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            String fileUrl = s3Service.uploadFile(file);
+            return "File uploaded successfully: " + fileUrl;
+        } catch (Exception e) {
+            return "Upload failed: " + e.getMessage();
+        }
     }
 }
