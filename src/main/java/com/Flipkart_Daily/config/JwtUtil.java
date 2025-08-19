@@ -22,12 +22,30 @@ public class JwtUtil {
     @Value("${app.jwt.expiration-ms}")
     private long jwtExpirationMs;
 
+    @Value("${app.jwt.refresh-expiration-ms}")
+    private long refreshExpirationMs;
+
+    @Value("${app.jwt.issuer}")
+    private String issuer;
+
+    @Value("${app.jwt.audience}")
+    private String audience;
+
+    @Value("${app.jwt.header}")
+    private String header;
+
+    @Value("${app.jwt.token-prefix}")
+    private String tokenPrefix;
+
     private Key getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String username, Map<String, Object> extraClaims) {
+    // ==========================
+    // Generate Access Token
+    // ==========================
+    public String generateAccessToken(String username, Map<String, Object> extraClaims) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpirationMs);
 
@@ -36,19 +54,36 @@ public class JwtUtil {
                 .setSubject(username)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
+                .setIssuer(issuer)
+                .setAudience(audience)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String generateToken(String username) {
-        return generateToken(username, Map.of());
+    public String generateAccessToken(String username) {
+        return generateAccessToken(username, Map.of());
     }
 
-    public boolean isTokenValid(String token, String username) {
-        final String user = extractUsername(token);
-        return (user != null && user.equals(username) && !isTokenExpired(token));
+    // ==========================
+    // Generate Refresh Token
+    // ==========================
+    public String generateRefreshToken(String username) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + refreshExpirationMs);
+
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .setIssuer(issuer)
+                .setAudience(audience)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
+    // ==========================
+    // Extract Claims
+    // ==========================
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -65,12 +100,33 @@ public class JwtUtil {
     private Claims parseAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
+                .requireIssuer(issuer)
+                .requireAudience(audience)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
+    // ==========================
+    // Validation
+    // ==========================
+    public boolean isTokenValid(String token, String username) {
+        final String user = extractUsername(token);
+        return (user != null && user.equals(username) && !isTokenExpired(token));
+    }
+
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
+    }
+
+    // ==========================
+    // Header & Prefix Helpers
+    // ==========================
+    public String getAuthHeader() {
+        return header;
+    }
+
+    public String getTokenPrefix() {
+        return tokenPrefix.trim();
     }
 }
